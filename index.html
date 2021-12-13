@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>My First Babylon.js Scene</title>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+            }
+            .FullWidth{
+                width: 100%;    
+            }
+            .square{
+                height: 20px;
+                width: 75px;
+                border-radius: 15px;
+                color: white;
+                display: flex;
+                justify-content: center;
+                }
+            .FlexContainerColumn{
+                width: 100%;
+                position: absolute;
+                display: flex-column;
+                justify-content: center;
+                text-align: center;
+                top: 10%;
+            }
+            .FlexContainerRow{
+                width: 100%;
+                display: flex;
+                justify-content: space-evenly;
+                align-items: center;
+                top: 10%;
+            }
+            #guiText{
+                color: white;
+            }
+            #guiHiddenText{
+                color: white;
+                opacity: 0;
+                margin: 5px;
+            }
+        </style>
+
+        <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/ammo.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+    </head>
+
+   <body>
+    <div class= 'FlexContainerColumn FullWidth' id = 'GUI' >
+        <p id = guiText> Click on a colored button to move the ball to the corresponding box. </p>
+        <button id = 'restartButtom'>Restart</button>
+        <div  id = 'guiHiddenText'>GUI disabled</div>
+    </div>
+    <canvas id="renderCanvas" touch-action="none"></canvas> <!-- touch-action="none" for best results from PEP -->
+
+    <script>
+        //declare
+        const canvas = document.getElementById("renderCanvas"); // Get the canvas element
+        const engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+        const gui = document.getElementById('GUI')
+        const boxes = {
+            green: {color: 'green', xPos: -20, yPos: 20, zPos: 20},
+            blue: {color: 'blue', xPos: 0, yPos: 20, zPos: 20},
+            red: {color: 'red', xPos: 20, yPos: 20, zPos: 20},
+        }
+        const speed  = 0.25;
+        var isClicked = false;
+
+        const squareContainer = document.createElement('div')
+        squareContainer.id = 'squareContainer'
+        squareContainer.classList.add('FlexContainerRow')
+        squareContainer.classList.add('FullWidth')
+        GUI.appendChild(squareContainer)
+    
+        //restart scene
+        document.getElementById('restartButtom').addEventListener("click", 
+            function(){
+                location.reload(); //cheat
+                }
+        ) 
+
+        // Create the scene
+        const createScene = function () {
+            //set the scene
+            const scene = new BABYLON.Scene(engine);
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 200, new BABYLON.Vector3(0, 0, 0));
+            camera.attachControl(canvas, true);
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
+            const colorWhite = new BABYLON.Color4(0, 0, 0)
+            const colorRed = new BABYLON.Color4(1, 0, 0)
+            const colorGreen = new BABYLON.Color4(0, 1, 0)
+            const colorBlue = new BABYLON.Color4(0, 0, 1)
+
+            //material
+            var matRed = new BABYLON.StandardMaterial("matRed", scene);
+            matRed.emissiveColor = colorRed
+            var matBlue = new BABYLON.StandardMaterial("matBlue", scene);
+            matBlue.emissiveColor = colorBlue
+            var matGreen = new BABYLON.StandardMaterial("matGreen", scene);
+            matGreen.emissiveColor = colorGreen
+            // Enable physics
+            scene.enablePhysics(new BABYLON.Vector3(0,0,0), new BABYLON.AmmoJSPlugin());
+                                //gravity vector            ,  ///physics plugin used 
+            //ceate the squares                    
+            for (let i = 0; i < Object.keys(boxes).length; i++){
+                //Create the squares and append them to div 'squareContainer'
+                const square = document.createElement('div')
+                square.style.backgroundColor = Object.keys(boxes)[i]
+                square.className = 'square'
+                const squareText = document.createTextNode(Object.keys(boxes)[i])
+                square.appendChild(squareText)
+                square.id = Object.keys(boxes)[i]
+                square.addEventListener("click", 
+                    //Function that moves the sphere
+                    function(){
+                        if(!isClicked){
+                            isClicked = true
+                            const color = event.target.id
+                            const guiBoxContainer = event.target.parentNode
+                            const guiHiddenText = document.getElementById('guiHiddenText')
+                            guiBoxContainer.style.opacity = '50%'
+                            guiHiddenText.style.opacity = 100
+                            const targetPos = [boxes[color].xPos, boxes[color].yPos, boxes[color].zPos]
+                            let direction = [targetPos[0]-whiteSphere.position.x, targetPos[1]-whiteSphere.position.y, targetPos[2]-whiteSphere.position.z]
+                            let magnitude = Math.sqrt(Math.pow(direction[0],2) + Math.pow(direction[1], 2)+Math.pow(direction[2], 2))
+                            let velocity = []
+                            for (let k = 0; k<3;k++){
+                                velocity[k] = speed*direction[k]/magnitude
+                            }
+                                scene.registerBeforeRender(function () {
+                                    //move white sphere at constant velocity
+                                    whiteSphere.position.x += velocity[0]
+                                    whiteSphere.position.y += velocity[1]
+                                    whiteSphere.position.z += velocity[2]
+                                    //check that box and sphere are touching
+                                    if(whiteSphere.intersectsMesh(redBox, true)){
+                                        redBox.material.emissiveColor = colorWhite
+                                        velocity = [0,0,0]
+                                        isClicked = false
+                                        guiBoxContainer.style.opacity = 100
+                                        guiHiddenText.style.opacity = 0
+                                    }else if(whiteSphere.intersectsMesh(blueBox, true)){
+                                        blueBox.material.emissiveColor = colorWhite
+                                        velocity = [0,0,0]
+                                        isClicked = false
+                                        guiBoxContainer.style.opacity = 100
+                                        guiHiddenText.style.opacity = 0
+                                    }else if(whiteSphere.intersectsMesh(greenBox, true)){
+                                        greenBox.material.emissiveColor = colorWhite
+                                        velocity = [0,0,0]
+                                        isClicked = false
+                                        guiBoxContainer.style.opacity = 100
+                                        guiHiddenText.style.opacity = 0
+                                    }else{
+                                        blueBox.material.emissiveColor = colorBlue
+                                        redBox.material.emissiveColor = colorRed
+                                        greenBox.material.emissiveColor = colorGreen
+
+                                    }
+                                });                        
+
+                        }
+                    });
+
+                squareContainer.appendChild(square)
+            }
+
+            //create the shapes
+            const redBox = BABYLON.MeshBuilder.CreateBox("green box", {size: 5,})  
+            redBox.position.x = boxes.red.xPos
+            redBox.position.y = boxes.red.yPos
+            redBox.position.z = boxes.red.zPos
+            redBox.physicsImpostor = new BABYLON.PhysicsImpostor(redBox, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 10, friction: 10, restitution: 0.01 }, scene);
+            redBox.material = matRed
+            
+            const greenBox = BABYLON.MeshBuilder.CreateBox("red box", {size: 5,})
+            greenBox.position.x = boxes.green.xPos
+            greenBox.position.y = boxes.green.yPos
+            greenBox.position.z = boxes.green.zPos
+            greenBox.material = matGreen
+            greenBox.physicsImpostor = new BABYLON.PhysicsImpostor(greenBox, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 10, friction: 10, restitution: 0.01 }, scene);
+            
+            const blueBox = BABYLON.MeshBuilder.CreateBox("blue box", {size: 5,})
+            blueBox.position.x = boxes.blue.xPos
+            blueBox.position.y = boxes.blue.yPos
+            blueBox.position.z = boxes.blue.zPos
+            blueBox.material = matBlue
+            blueBox.physicsImpostor = new BABYLON.PhysicsImpostor(blueBox, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 10, friction: 10, restitution: 0.01 }, scene);
+
+            const whiteSphere = BABYLON.MeshBuilder.CreateSphere("white sphere", {diameter: 6})
+            whiteSphere.physicsImpostor = new BABYLON.PhysicsImpostor(whiteSphere, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 0.11, friction: 10, restitution: 0.01 }, scene);
+           
+
+            return scene;
+        };
+
+        //Call the createScene function
+        const scene = createScene(); 
+
+        // Register a render loop to repeatedly render the scene
+        engine.runRenderLoop(function () {
+                scene.render();
+        });
+
+        //Watch for browser/canvas resize events
+        window.addEventListener("resize", function () {
+               engine.resize();
+       });
+    </script>
+
+   </body>
+
+</html>
